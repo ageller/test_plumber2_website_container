@@ -1,0 +1,53 @@
+# Production-style stack: nginx in front of several replicas of the app image.
+#
+# This file is used unchanged on the laptop (Rungs 2 and 3) and on a VM.
+# Only .env differs between environments.
+#
+#   Rung 2 (build from source):
+#     docker compose -f docker-compose.yml -f docker-compose.local.yml up --build
+#   Rung 3 and the VM (use a registry image):
+#     docker compose -f docker-compose.yml pull
+#     docker compose -f docker-compose.yml up -d
+
+# A fixed project name keeps container and volume names the same no matter
+# which directory this file is copied into (for example on the VM). It is
+# different from the Flask prototype's "survey-demo", so the two demos can
+# run on the same machine without touching each other's containers or data.
+name: survey-demo-r
+
+services:
+  app:
+    image: ${IMAGE:?IMAGE is not set. Copy .env.example to .env and edit it}:${IMAGE_TAG:?IMAGE_TAG is not set in .env}
+    env_file: .env
+    deploy:
+      # Several identical containers, each one R process on port 8000. This
+      # plays the role of gunicorn's "--workers 2" in the Flask prototype.
+      # No container_name anywhere: a fixed name would allow only one replica.
+      replicas: ${APP_REPLICAS:-2}
+    volumes:
+      # All replicas share one SQLite file. Safe here because they share one
+      # host and one local filesystem (see app/R/db.R).
+      - survey_data:/data
+    restart: unless-stopped
+    # No "ports:" on purpose. The replicas listen on port 8000 inside the
+    # Compose network only, so nginx is the single way in from the host.
+    # The healthcheck comes from the HEALTHCHECK instruction in the image.
+
+  nginx:
+    image: nginx:1.30-alpine
+    ports:
+      - "${HTTP_PORT:?HTTP_PORT is not set in .env}:80"
+    volumes:
+      # ":z" lets the container read this file on SELinux hosts such as RHEL.
+      # Hosts without SELinux (WSL, Ubuntu) ignore it.
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro,z
+    depends_on:
+      app:
+        condition: service_healthy
+        # Restart nginx whenever Compose recreates the app (new tag, rollback).
+        # nginx also re-resolves the replicas by itself (see nginx/default.conf).
+        restart: true
+    restart: unless-stopped
+
+volumes:
+  survey_data:

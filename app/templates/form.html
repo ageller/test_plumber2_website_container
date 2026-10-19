@@ -1,0 +1,66 @@
+{{! The survey form. The data comes from form_page_data() in app/R/render.R. }}
+{{! Attributes always use double quotes, because whisker does not escape single quotes. }}
+<h1>Container workflow survey</h1>
+<p class="lead">A short, harmless survey used to rehearse a container deployment.</p>
+
+{{#has_errors}}
+<div class="alert" role="alert">
+  {{#errors.form}}<p>{{errors.form}}</p>{{/errors.form}}
+  {{#has_field_errors}}<p>Please fix the fields marked below.</p>{{/has_field_errors}}
+</div>
+{{/has_errors}}
+
+<form method="post" action="/">
+  <input type="hidden" name="csrf_token" value="{{csrf_token}}">
+
+  <div class="field{{#errors.name}} has-error{{/errors.name}}">
+    <label for="name">Name <span class="hint">(optional, up to {{name_max}} characters)</span></label>
+    <input id="name" name="name" type="text" maxlength="{{name_max}}" value="{{name}}" autocomplete="name">
+    {{#errors.name}}<p class="error">{{errors.name}}</p>{{/errors.name}}
+  </div>
+
+  <div class="field{{#errors.language}} has-error{{/errors.language}}">
+    <label for="language">Primary language you use at work</label>
+    <select id="language" name="language" required>
+      <option value="">Choose one</option>
+      {{#languages}}
+      <option value="{{value}}"{{#selected}} selected{{/selected}}>{{value}}</option>
+      {{/languages}}
+    </select>
+    {{#errors.language}}<p class="error">{{errors.language}}</p>{{/errors.language}}
+  </div>
+
+  <fieldset class="field{{#errors.container_experience}} has-error{{/errors.container_experience}}">
+    <legend>Experience with containers</legend>
+    <div class="choices choices-row">
+      {{#levels}}
+      <label>
+        <input type="radio" name="container_experience" value="{{value}}"{{#checked}} checked{{/checked}}{{#first}} required{{/first}}>
+        {{value}}{{#label}} <span class="hint">({{label}})</span>{{/label}}
+      </label>
+      {{/levels}}
+    </div>
+    {{#errors.container_experience}}<p class="error">{{errors.container_experience}}</p>{{/errors.container_experience}}
+  </fieldset>
+
+  <fieldset class="field{{#errors.environments}} has-error{{/errors.environments}}">
+    <legend>Which environments do you deploy to? <span class="hint">(choose all that apply)</span></legend>
+    <div class="choices">
+      {{#environments}}
+      <label>
+        <input type="checkbox" name="environments" value="{{value}}"{{#checked}} checked{{/checked}}>
+        {{value}}
+      </label>
+      {{/environments}}
+    </div>
+    {{#errors.environments}}<p class="error">{{errors.environments}}</p>{{/errors.environments}}
+  </fieldset>
+
+  <div class="field{{#errors.comments}} has-error{{/errors.comments}}">
+    <label for="comments">Comments <span class="hint">(optional, up to {{comments_max}} characters)</span></label>
+    <textarea id="comments" name="comments" rows="4" maxlength="{{comments_max}}">{{comments}}</textarea>
+    {{#errors.comments}}<p class="error">{{errors.comments}}</p>{{/errors.comments}}
+  </div>
+
+  <button type="submit">Submit</button>
+</form>

@@ -1,0 +1,36 @@
+# Keep the build context small and free of secrets.
+# Only renv.lock, dev-packages.txt, and app/ are needed to build the image.
+
+.git
+.github
+.gitignore
+.dockerignore
+
+# Secrets and local configuration
+.env
+.env.*
+
+# R and renv files from optional host-side use (see the README, "Editor integration")
+renv/library
+renv/staging
+.Rprofile
+**/.Rprofile
+.Rhistory
+**/.Rhistory
+.RData
+**/.RData
+.Rproj.user
+**/.Rproj.user
+
+# Local SQLite databases from bare runs
+**/*.db
+**/*.db-wal
+**/*.db-shm
+
+# Tests (bind-mounted in the dev stack, never baked into an image)
+tests
+
+# Docs and deployment files that the image does not need
+**/*.md
+docker-compose*.yml
+nginx

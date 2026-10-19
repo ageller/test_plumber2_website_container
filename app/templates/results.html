@@ -1,0 +1,75 @@
+{{! The results summary. The data comes from results_page_data() in app/R/render.R. }}
+<h1>Results</h1>
+<p class="lead">Total submissions: <strong class="total">{{total}}</strong></p>
+
+<div class="summary">
+  <section>
+    <h2>Primary language</h2>
+    <table>
+      <tbody>
+        {{#languages}}
+        <tr><th scope="row">{{choice}}</th><td class="num">{{n}}</td></tr>
+        {{/languages}}
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Experience with containers</h2>
+    <table>
+      <tbody>
+        {{#experience}}
+        <tr>
+          <th scope="row">{{choice}}{{#label}} <span class="hint">({{label}})</span>{{/label}}</th>
+          <td class="num">{{n}}</td>
+        </tr>
+        {{/experience}}
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Deployment environments</h2>
+    <table>
+      <tbody>
+        {{#environments}}
+        <tr><th scope="row">{{choice}}</th><td class="num">{{n}}</td></tr>
+        {{/environments}}
+      </tbody>
+    </table>
+    <p class="hint">People can choose more than one.</p>
+  </section>
+</div>
+
+<h2>10 most recent submissions</h2>
+{{#has_recent}}
+<div class="table-wrap">
+  <table class="recent">
+    <thead>
+      <tr>
+        <th scope="col">Time (UTC)</th>
+        <th scope="col">Name</th>
+        <th scope="col">Language</th>
+        <th scope="col">Experience</th>
+        <th scope="col">Environments</th>
+        <th scope="col">Comments</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{#recent}}
+      <tr>
+        <td class="nowrap">{{created_at}}</td>
+        <td>{{name}}</td>
+        <td>{{language}}</td>
+        <td class="num">{{container_experience}}</td>
+        <td>{{environments}}</td>
+        <td>{{comments}}</td>
+      </tr>
+      {{/recent}}
+    </tbody>
+  </table>
+</div>
+{{/has_recent}}
+{{^has_recent}}
+<p>No submissions yet. <a href="/">Be the first.</a></p>
+{{/has_recent}}

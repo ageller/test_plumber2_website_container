@@ -1,0 +1,44 @@
+# Rung 1: development stack, source bind-mounted from the host.
+#
+#   docker compose -f docker-compose.dev.yml up --build
+#
+# Then browse to http://localhost:5000. Applying changes:
+#   - templates and CSS: refresh the browser (read from disk on every request)
+#   - R code (app/run.R, app/api.R, app/R/*.R):
+#       docker compose -f docker-compose.dev.yml restart app
+#   - renv.lock, dev-packages.txt, or the Dockerfile:
+#       docker compose -f docker-compose.dev.yml up --build
+#
+# Standalone file: do not combine it with docker-compose.yml. It has its own
+# project name and its own database volume (dev_data), so dev data never mixes
+# with the survey_data volume used in Rungs 2 and 3. It does not read .env.
+# It runs one R process only; several replicas are exercised in Rung 2.
+
+name: survey-demo-r-dev
+
+services:
+  app:
+    build:
+      context: .
+      target: dev
+    # The same command as production.
+    command: ["Rscript", "app/run.R"]
+    ports:
+      # Published directly on host port 5000, no nginx. Inside the container
+      # the app listens on 8000, the same as in production.
+      - "5000:8000"
+    volumes:
+      # Source from the host, mounted over the paths used in the Dockerfile,
+      # so edits on the host are visible inside the container immediately.
+      - ./app:/app/app
+      - ./tests:/app/tests
+      - dev_data:/data
+    environment:
+      APP_ENV: development
+      DATABASE_PATH: /data/survey.db
+      TRUST_PROXY: "0"
+      # For local development only. Never reuse this value anywhere else.
+      SECRET_KEY: dev-only-not-a-secret-at-least-32-chars
+
+volumes:
+  dev_data:

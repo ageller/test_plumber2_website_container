@@ -1,0 +1,17 @@
+# Local configuration and secrets (only .env.example is committed)
+.env
+
+# R session files
+.Rhistory
+.RData
+.Rproj.user/
+
+# Created only if you run renv on the host for editor support (optional, see
+# the README). The containers never use them.
+renv/
+.Rprofile
+
+# Local SQLite databases from bare (non-container) runs
+*.db
+*.db-wal
+*.db-shm

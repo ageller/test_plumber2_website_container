@@ -1,0 +1,9 @@
+# Dev-only R packages, installed only in the "dev" image target (Rung 1 and CI).
+# The equivalent of requirements-dev.txt. One package@version per line.
+# Versions match the PPM_SNAPSHOT date in the Dockerfile.
+testthat@3.3.2
+httr2@1.3.0
+
+# The tests also use callr (3.8.0), but it is not listed here because it is
+# already pinned in renv.lock: plumber2 needs it at run time (plumber2 ->
+# roxygen2 -> pkgload -> pkgbuild -> callr), so the prod image has it too.

@@ -1,0 +1,37 @@
+<!doctype html>
+{{! Page frame. Every page is rendered first, then inserted here as body. }}
+{{! Triple braces: body is HTML our own templates produced, so it is not escaped again. }}
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{title}}</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <nav>
+      <a class="brand" href="/">Container workflow survey</a>
+      <a href="/">Survey</a>
+      <a href="/results">Results</a>
+    </nav>
+  </header>
+
+  <main>
+{{{body}}}
+  </main>
+
+  {{! Teaching aid: compare these values in Rung 1 (direct) and Rung 2 (behind nginx). }}
+  <footer class="site-footer">
+    <h2>Request as seen by R</h2>
+    <dl>
+      <dt>Client IP</dt><dd><code>{{client_ip}}</code></dd>
+      <dt>Scheme</dt><dd><code>{{scheme}}</code></dd>
+      <dt>Host</dt><dd><code>{{host}}</code></dd>
+      <dt>X-Forwarded-For header</dt><dd><code>{{forwarded_for}}</code></dd>
+      <dt>Proxy headers trusted (TRUST_PROXY)</dt><dd><code>{{trust_proxy}}</code></dd>
+      <dt>Served by instance</dt><dd><code>{{instance}}</code></dd>
+    </dl>
+  </footer>
+</body>
+</html>
