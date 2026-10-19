@@ -1,0 +1,101 @@
+# Test, then build the production image and push it to GitHub Container
+# Registry (GHCR).
+#
+# This file does nothing until it is committed and pushed to GitHub.
+# Image:  ghcr.io/<owner>/<repo> (lowercased)
+# Tags:   the short git SHA (7 characters, for example 3f2c1ab) and "latest"
+
+name: build-and-push
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: docker/setup-buildx-action@v4
+
+      # The same dev image as Rung 1. The GitHub Actions cache keeps the R
+      # library layers between runs, so they are rebuilt only when renv.lock,
+      # dev-packages.txt, or the Dockerfile change.
+      - name: Build the dev image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          target: dev
+          load: true
+          tags: survey-demo-r-dev:ci
+          cache-from: type=gha,scope=dev
+          cache-to: type=gha,scope=dev,mode=max
+
+      # Same as "docker compose -f docker-compose.dev.yml run --rm app
+      # Rscript tests/run_tests.R" on the laptop: app/ and tests/ are mounted
+      # from the checkout, and a failing test fails the job.
+      - name: Run the tests in the dev image
+        run: >
+          docker run --rm
+          -v "$PWD/app:/app/app:ro"
+          -v "$PWD/tests:/app/tests:ro"
+          survey-demo-r-dev:ci
+          Rscript tests/run_tests.R
+
+  build-and-push:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # Registry names must be lowercase, but GitHub owner and repo names may not be.
+      - name: Compute lowercase image name
+        run: echo "IMAGE_NAME=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_ENV"
+
+      # For ARM VMs as well, uncomment this step and the second "platforms" line below.
+      # - uses: docker/setup-qemu-action@v4
+
+      - uses: docker/setup-buildx-action@v4
+
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Compute tags and labels
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ${{ env.IMAGE_NAME }}
+          tags: |
+            type=sha,prefix=,format=short
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - uses: docker/build-push-action@v7
+        with:
+          context: .
+          target: prod
+          platforms: linux/amd64
+          # linux/arm64 runs under emulation on GitHub's x86 runners, which is
+          # slow (expect many minutes). Only add it if a VM is ARM:
+          # platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            SOURCE_URL=${{ github.server_url }}/${{ github.repository }}
+            GIT_SHA=${{ github.sha }}
+            BUILD_DATE=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
+          # The dev cache too: the base and builder stages (the R library) are
+          # the same for both targets, so they are not rebuilt here.
+          cache-from: |
+            type=gha,scope=prod
+            type=gha,scope=dev
+          cache-to: type=gha,scope=prod,mode=max
