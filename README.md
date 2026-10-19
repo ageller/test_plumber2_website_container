@@ -83,7 +83,7 @@ plumber2 has no auto-reload like Flask's `--debug`, so this setup splits changes
 Try it with the stack running:
 
 1. **Template:** in `app/templates/form.html`, change the text of the `<h1>`. Refresh the browser: the new text appears. In development the app reads each template from disk on every request (in production it reads them once at startup).
-2. **CSS:** change a color in `app/static/style.css` and refresh. In development the stylesheet is sent with `Cache-Control: no-cache`, so the browser always fetches the new version.
+2. **CSS:** change a color in `app/static/style.css` and refresh. Files in `app/static/` are served straight from disk by httpuv (the web server under plumber2, set up with `api_statics()` in `app/run.R`), and in development they are sent with `Cache-Control: no-cache`, so the browser always fetches the new version.
 3. **R code:** in `app/R/validation.R`, change the message `"Choose a language from the list."`. Submit the form without choosing a language: you still see the old message, because R loaded the code at startup. Now run:
 
    ```bash
@@ -102,7 +102,7 @@ For comparison, the same R code change in Rung 2 means rebuilding the production
 docker compose -f docker-compose.dev.yml run --rm app Rscript tests/run_tests.R
 ```
 
-This works whether or not the dev stack is running. The tests start their own servers on random ports with temporary databases, and never touch the `dev_data` volume. Expect about 10 seconds and `[ FAIL 0 | WARN 0 | SKIP 0 | PASS 137 ]`.
+This works whether or not the dev stack is running. The tests start their own servers on random ports with temporary databases, and never touch the `dev_data` volume. Expect about 10 seconds and `[ FAIL 0 | WARN 0 | SKIP 0 | PASS 142 ]`.
 
 ### Shell, R console, and logs
 
@@ -208,7 +208,7 @@ docker compose down                     # stop and remove containers; the databa
 docker compose down -v                  # also delete the survey_data volume (resets the database)
 ```
 
-Each app log line is one request: time, method, path, status, duration, and client IP, for example `2026-10-19T15:45:15Z GET / 200 31ms 172.19.0.1`. Errors go to the same log (stderr) and never to the browser.
+Each app log line is one request: time, method, path, status, duration, and client IP, for example `2026-10-19T15:45:15Z GET / 200 31ms 172.19.0.1`. Errors go to the same log (stderr) and never to the browser. The one exception is the stylesheet: files under `/static/` are served by httpuv without going through R, so they never appear in the app log. nginx's log (`docker compose logs nginx`) still records them. In Rung 1, where there is no nginx, they are not logged at all.
 
 **Change the number of replicas:** edit `APP_REPLICAS` in `.env` (for example `APP_REPLICAS=3`), then run `docker compose up -d`. Compose starts or removes app containers, and nginx picks up the new set within about 10 seconds. For a one-off experiment without editing `.env`: `docker compose up -d --scale app=3`.
 
@@ -713,8 +713,8 @@ The project names are fixed with `name:` at the top of each Compose file. Withou
 | `docker-compose.local.yml` | Rung 2 override that builds the `prod` target from source. |
 | `docker-compose.dev.yml` | Rung 1 standalone dev stack. |
 | `nginx/default.conf` | Load balancer across the replicas (`least_conn`, re-resolved through Docker's DNS), with commented Shiny, WebSocket, and TLS notes. |
-| `app/run.R` | Entry point: reads configuration, creates the table, sets up logging, starts plumber2. The equivalent of `wsgi.py`. |
-| `app/api.R` | The routes (plumber2 annotations). |
+| `app/run.R` | Entry point: reads configuration, creates the table, serves `app/static/`, sets up logging, starts plumber2. The equivalent of `wsgi.py`. |
+| `app/api.R` | The page and health check routes (plumber2 annotations). |
 | `app/R/config.R` | Environment variables and the `SECRET_KEY` check. |
 | `app/R/db.R`, `app/schema.sql` | SQLite connection per request, WAL mode, busy timeout, queries, idempotent schema. |
 | `app/R/validation.R` | The form questions and pure validation functions. |
@@ -734,7 +734,7 @@ The project names are fixed with `name:` at the top of each Compose file. Withou
 | `POST /` | Validate and save, then redirect to `/thanks` (POST/redirect/GET, status 303). Invalid input or a bad CSRF token gives status 400 and the form again. |
 | `GET /thanks` | Confirmation page |
 | `GET /results` | Totals, counts per answer, and the 10 most recent submissions |
-| `GET /static/style.css` | The stylesheet, read from disk on every request |
+| `GET /static/style.css` | The stylesheet. Served from disk by httpuv (`api_statics()` in `app/run.R`), without going through R, so it is not in the app's access log. |
 | `GET /healthz` | `200 {"status":"ok","instance":"<container hostname>"}` if the database answers `SELECT 1`, otherwise `503` |
 
 ### Pinned versions

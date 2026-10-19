@@ -103,10 +103,24 @@ test_that("/results shows the saved submissions, with HTML in user input escaped
   expect_no_match(html, "<b>bold", fixed = TRUE)
 })
 
-test_that("the stylesheet is served", {
+test_that("the stylesheet is served from app/static", {
   response <- httr2::req_perform(app_request(server, "/static/style.css"))
   expect_equal(httr2::resp_status(response), 200)
   expect_match(httr2::resp_content_type(response), "text/css")
+  css <- paste(readLines(file.path(project_root, "app", "static", "style.css")), collapse = "\n")
+  expect_equal(trimws(httr2::resp_body_string(response)), trimws(css))
+  # Production: no Cache-Control: no-cache.
+  expect_false(httr2::resp_header_exists(response, "cache-control"))
+
+  missing <- httr2::req_perform(app_request(server, "/static/nope.css"))
+  expect_equal(httr2::resp_status(missing), 404)
+})
+
+test_that("in development the stylesheet is sent with Cache-Control: no-cache", {
+  dev_server <- local_server(APP_ENV = "development")
+  response <- httr2::req_perform(app_request(dev_server, "/static/style.css"))
+  expect_equal(httr2::resp_status(response), 200)
+  expect_equal(httr2::resp_header(response, "cache-control"), "no-cache")
 })
 
 test_that("each request is logged as one access line, without form contents", {

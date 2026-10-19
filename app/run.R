@@ -32,7 +32,9 @@ utc_time <- function(time = Sys.time()) {
 
 # One access line per request on stdout, like gunicorn's access log:
 #   2026-10-19T15:09:12Z GET /results 200 4ms 172.18.0.1
-# Form contents, cookies, and the secret key are never logged.
+# Form contents, cookies, and the secret key are never logged. Requests for
+# /static/ files never reach R (see api_statics() below), so they are not in
+# this log. nginx's log records them in Rungs 2 and 3.
 log_access <- function(request, response, ...) {
   duration_ms <- 1000 * as.numeric(difftime(Sys.time(), request$start_time, units = "secs"))
   cat(
@@ -62,6 +64,16 @@ log_event <- function(event, message, request = NULL, time = Sys.time(), ...) {
 
 # doc_type = NULL: no generated API documentation pages. This is a website.
 pa <- api(file.path("app", "api.R"), host = "0.0.0.0", port = config$port, doc_type = NULL)
+
+# Files in app/static are served at /static/ by httpuv (the web server under
+# plumber2) straight from disk, without going through R. So a CSS edit shows
+# up on the next request, and a stylesheet request never waits behind a busy
+# R process. In development, Cache-Control: no-cache makes the browser check
+# for a new version on every page load, so CSS edits show up on a refresh.
+pa <- api_statics(
+  pa, "/static", normalizePath(file.path("app", "static")),
+  headers = if (config$development) list("Cache-Control" = "no-cache") else list()
+)
 
 # fiery (the server under plumber2) would otherwise set a "fiery_id" cookie on
 # every response to tell clients apart. This app keeps no per-client state on

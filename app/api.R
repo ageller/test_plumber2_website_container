@@ -1,5 +1,6 @@
-# plumber2 route definitions: survey form, thanks page, results summary,
-# stylesheet, and health check.
+# plumber2 route definitions: survey form, thanks page, results summary, and
+# health check. The stylesheet (/static/style.css) is served by api_statics()
+# in app/run.R, not by a route here.
 #
 # app/run.R loads the helpers in app/R/ and creates `config` before plumber2
 # parses this file, so every handler can use them.
@@ -88,18 +89,6 @@ function(request) {
 function(request) {
   results <- with_db(config$database_path, get_results)
   page(request, "results", "Results", results_page_data(results))
-}
-
-#* The stylesheet, read from disk on every request (in both modes)
-#* @get /static/style.css
-#* @serializer text/css
-function(response) {
-  # In development, tell the browser to check for a new version on every page
-  # load, so CSS edits show up on a refresh.
-  if (config$development) {
-    response$set_header("Cache-Control", "no-cache")
-  }
-  read_text_file(file.path("app", "static", "style.css"))
 }
 
 #* Health check: 200 if the database answers SELECT 1, otherwise 503
